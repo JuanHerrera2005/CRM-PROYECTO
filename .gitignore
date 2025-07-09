@@ -1,0 +1,14 @@
+# Ignorar node_modules
+node_modules/
+
+# Ignorar carpeta de salida de compilación
+dist/
+
+# Ignorar archivos de entorno
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+
