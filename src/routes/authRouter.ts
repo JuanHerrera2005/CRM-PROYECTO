@@ -15,9 +15,9 @@ const router = Router();
 
 /**
  * @swagger
- * /api/CRM/auth/register:
+ * /api/CRM/auth/login:
  *   post:
- *     summary: Crear un nuevo usuario JWT
+ *     summary: Logear  usuario JWT
  *     tags: [UsuarioJWT]
  *     security:
  *       - bearerAuth: []
