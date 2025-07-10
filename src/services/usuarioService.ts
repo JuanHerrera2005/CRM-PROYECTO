@@ -37,30 +37,56 @@ export const insertarUsuario = async (usuario: Usuario) => {
   return RESPONSE_INSERT_OK;
 };
 
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+
 export const modificarUsuario = async (id: number, usuario: Usuario) => {
   console.log('usuarioService::modificarUsuario');
+
   const dataActualizada: Usuario = {
     ...usuario,
-    fechaActualizacion: new Date()
+    fechaActualizacion: new Date(),
   };
-  await prisma.usuarios.update({
-    where: {
-      id: id
-    },
-    data: toPrismaUsuario(dataActualizada)
-  });
-  return RESPONSE_UPDATE_OK;
+
+  try {
+    await prisma.usuarios.update({
+      where: { id },
+      data: toPrismaUsuario(dataActualizada),
+    });
+
+    return RESPONSE_UPDATE_OK;
+  } catch (error: any) {
+    if (
+      error instanceof PrismaClientKnownRequestError &&
+      error.code === 'P2025'
+    ) {
+      throw new Error('Usuario no encontrado');
+    }
+    throw error;
+  }
 };
 
 
 export const eliminarUsuario = async (id: number) => {
     console.log('usuarioService::eliminarUsuario');
-     await prisma.usuarios.update({
+
+    const usuario = await prisma.usuarios.findFirst({
+        where: {
+            id,
+            estado_auditoria: '1',
+        },
+    });
+
+    if (!usuario) {
+        throw new Error(`El usuario con ID ${id} no existe o ya está eliminado.`);
+    }
+
+    await prisma.usuarios.update({
         where: { id },
         data: {
             estado_auditoria: '0',
-            fecha_actualizacion: new Date()
-        }
+            fecha_actualizacion: new Date(),
+        },
     });
+
     return RESPONSE_DELETE_OK;
 };

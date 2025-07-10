@@ -61,19 +61,29 @@ export const actualizarUsuario = async (id: number, usuario: UsuarioJWT) => {
 };
 
 export const eliminarUsuarioLogico = async (id: number) => {
-  const existe = await prisma.usuariojwt.findUnique({ where: { id } });
-  if (!existe || existe.estado_auditoria !== '1') return ;
+  // Buscar usuariojwt activo con ese id
+  const jwt = await prisma.usuariojwt.findFirst({
+    where: {
+      id,
+      estado_auditoria: '1',
+    },
+  });
+
+  if (!jwt) {
+    throw new Error(`El usuario JWT con ID ${id} no existe o ya está eliminado.`);
+  }
 
   await prisma.usuariojwt.update({
     where: { id },
     data: {
       estado_auditoria: '0',
-      fecha_actualizacion: new Date()
-    }
+      fecha_actualizacion: new Date(),
+    },
   });
 
   return RESPONSE_DELETE_OK;
 };
+
 
 // 🔐 AUTENTICACIÓN
 

@@ -1,3 +1,4 @@
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 
 import { PrismaClient, interacciones } from '@prisma/client';
 import { Interaccion } from '../models/interaccion';
@@ -42,30 +43,55 @@ export const insertarInteraccion = async (interaccion: Omit<Interaccion, 'id'>) 
   return RESPONSE_INSERT_OK;
 };
 
+
 export const modificarInteraccion = async (id: number, interaccion: Partial<Interaccion>) => {
   console.log('interaccionService::modificarInteraccion');
 
   const dataActualizada = {
     ...interaccion,
-    fechaActualizacion: new Date()
+    fechaActualizacion: new Date(),
   } as Interaccion;
 
-  await prisma.interacciones.update({
-    where: { id },
-    data: toPrismaInteraccion(dataActualizada)
-  });
+  try {
+    await prisma.interacciones.update({
+      where: { id },
+      data: toPrismaInteraccion(dataActualizada),
+    });
 
-  return RESPONSE_UPDATE_OK;
+    return RESPONSE_UPDATE_OK;
+  } catch (error: any) {
+    if (
+      error instanceof PrismaClientKnownRequestError &&
+      error.code === 'P2025'
+    ) {
+      throw new Error('Interacción no encontrada');
+    }
+    throw error;
+  }
 };
 
-export const eliminarInteraccion = async(id: number) => {
+
+export const eliminarInteraccion = async (id: number) => {
     console.log('interaccionService::eliminarInteraccion');
-     await prisma.interacciones.update({
+
+    // Busca la interacción activa con ese id
+    const interaccion = await prisma.interacciones.findFirst({
+        where: {
+            id,
+            estado_auditoria: '1',
+        },
+    });
+
+    if (!interaccion) {
+        throw new Error(`La interacción con ID ${id} no existe o ya está eliminada.`);
+    }
+
+    await prisma.interacciones.update({
         where: { id },
         data: {
             estado_auditoria: '0',
-           
-        }
+        },
     });
+
     return RESPONSE_DELETE_OK;
 };

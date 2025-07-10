@@ -3,6 +3,7 @@ import { PrismaClient, tipo_documentos } from "@prisma/client";
 import { TipoDocumento } from '../models/tipoDocumento';
 import { RESPONSE_DELETE_OK, RESPONSE_INSERT_OK, RESPONSE_UPDATE_OK } from "../shared/constants";
 import { fromPrismaTipoDocumento } from "../mappers/tipoDocumento.mapper";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 
 const prisma = new PrismaClient();
 
@@ -43,34 +44,56 @@ export const insertarTipoDocumento = async(tipoDocumento: TipoDocumento) => {
     return RESPONSE_INSERT_OK;
 }
 
-export const modificarTipoDocumento = async(id: number, tipoDocumento: TipoDocumento) => {
+export const modificarTipoDocumento = async (id: number, tipoDocumento: TipoDocumento) => {
     console.log('tipoDocumentoService::modificarTipoDocumento');
-    
-    const tipoDocumentoModificado: tipo_documentos = await prisma.tipo_documentos.update({
-        where: {
-            id: id // <- Cambiado a 'id'
-        },
-        data: {
-            ...tipoDocumento, 
-            fecha_actualizacion: new Date(), // Campo automático
+
+    try {
+        const tipoDocumentoModificado: tipo_documentos = await prisma.tipo_documentos.update({
+            where: {
+                id: id,
+            },
+            data: {
+                ...tipoDocumento,
+                fecha_actualizacion: new Date(),
+            },
+        });
+
+        return RESPONSE_UPDATE_OK;
+    } catch (error: any) {
+        if (
+            error instanceof PrismaClientKnownRequestError &&
+            error.code === 'P2025'
+        ) {
+            throw new Error('Tipo de documento no encontrado');
         }
-    });
 
-    return RESPONSE_UPDATE_OK;
-}
+        throw error;
+    }
+};
 
-export const eliminarTipoDocumento = async(id: number) => {
+
+export const eliminarTipoDocumento = async (id: number) => {
     console.log('tipoDocumentoService::eliminarTipoDocumento');
-                                               
-    const tipoDocumentoEliminado: tipo_documentos | null = await prisma.tipo_documentos.update({
-        where: {
-            id: id // <- Cambiado a 'id'
-        },
-        data: {
-            estado_auditoria: '0',
-            fecha_actualizacion: new Date(), // Campo automático
-        }
-    });
 
-    return RESPONSE_DELETE_OK;
+    try {
+        await prisma.tipo_documentos.update({
+            where: {
+                id,
+            },
+            data: {
+                estado_auditoria: '0',
+                fecha_actualizacion: new Date(),
+            },
+        });
+
+        return RESPONSE_DELETE_OK;
+    } catch (error: any) {
+        if (
+            error instanceof PrismaClientKnownRequestError &&
+            error.code === 'P2025'
+        ) {
+            throw new Error(`El tipo de documento con ID ${id} no existe.`);
+        }
+        throw error;
+    }
 };

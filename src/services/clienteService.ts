@@ -34,26 +34,56 @@ export const insertarCliente = async(cliente: Cliente) => {
   return RESPONSE_INSERT_OK;
 }
  
-export const modificarCliente = async(id: number, cliente: Cliente) => {
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+
+export const modificarCliente = async (id: number, cliente: Cliente) => {
     console.log('clienteService::modificarCliente');
-    const dataActualizada = { ...cliente,  id,  fechaActualizacion: new Date()
+    const dataActualizada = {
+        ...cliente,
+        id,
+        fechaActualizacion: new Date(),
     };
-    await prisma.clientes.update({
-        where: { id },
-        data: toPrismaCliente(dataActualizada)
-    });
+
+    try {
+        await prisma.clientes.update({
+            where: { id },
+            data: toPrismaCliente(dataActualizada),
+        });
+
+        return RESPONSE_UPDATE_OK;
+    } catch (error: any) {
+        if (
+            error instanceof PrismaClientKnownRequestError &&
+            error.code === 'P2025'
+        ) {
+            throw new Error('Cliente no encontrado');
+        }
+
+        throw error;
+    }
+};
  
-    return RESPONSE_UPDATE_OK;
-}
- 
-export const eliminarCliente = async(id: number) => {
+export const eliminarCliente = async (id: number) => {
     console.log('clienteService::eliminarCliente');
-     await prisma.clientes.update({
+
+    // Buscar cliente activo con ese id
+    const cliente = await prisma.clientes.findFirst({
+        where: {
+            id,
+            estado_auditoria: '1',
+        },
+    });
+
+    if (!cliente) {
+        throw new Error(`El cliente con ID ${id} no existe o ya está eliminado.`);
+    }
+
+    await prisma.clientes.update({
         where: { id },
         data: {
             estado_auditoria: '0',
-        }
- 
+        },
     });
+
     return RESPONSE_DELETE_OK;
 };

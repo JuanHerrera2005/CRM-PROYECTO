@@ -54,6 +54,16 @@ export const actualizarUsuario = async (req: Request, res: Response) => {
 };
 
 export const eliminarUsuario = async (req: Request, res: Response) => {
-  const response = await service.eliminarUsuarioLogico(Number(req.params.id));
-  res.json({ message: response });
+  try {
+    const response = await service.eliminarUsuarioLogico(Number(req.params.id));
+    res.json({ success: true, message: response });
+  } catch (error: any) {
+    // Puedes ajustar el status según el tipo de error
+    if (error.message.includes('no existe')) {
+      return res.status(404).json({ success: false, message: error.message });
+    }
+
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Error interno del servidor' });
+  }
 };

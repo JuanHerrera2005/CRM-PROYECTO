@@ -3,6 +3,7 @@ import { PrismaClient, oportunidades } from '@prisma/client';
 import { Oportunidad } from '../models/oportunidad';
 import { fromPrismaOportunidad, toPrismaOportunidad } from '../mappers/oportunidad.mapper';
 import { RESPONSE_DELETE_OK, RESPONSE_INSERT_OK, RESPONSE_UPDATE_OK } from '../shared/constants';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 
 const prisma = new PrismaClient();
 
@@ -47,20 +48,35 @@ export const modificarOportunidad = async (id: number, oportunidad: Partial<Opor
 
   const dataActualizada = {
     ...oportunidad,
-    fechaActualizacion: new Date()
+    fechaActualizacion: new Date(),
   } as Oportunidad;
 
-  await prisma.oportunidades.update({
-    where: { id },
-    data: toPrismaOportunidad(dataActualizada)
-  });
+  try {
+    await prisma.oportunidades.update({
+      where: { id },
+      data: toPrismaOportunidad(dataActualizada),
+    });
 
-  return RESPONSE_UPDATE_OK;
+    return RESPONSE_UPDATE_OK;
+  } catch (error: any) {
+    if (
+      error instanceof PrismaClientKnownRequestError &&
+      error.code === 'P2025'
+    ) {
+      throw new Error('Oportunidad no encontrada');
+    }
+    throw error;
+  }
 };
-
-
 export const eliminarOportunidad = async(id: number) => {
     console.log('oportunidadService::eliminarOportunidad');
+     const oportunidad = await prisma.oportunidades.findUnique({
+         where: { id, estado_auditoria: '1' }, 
+        });
+    
+        if (!oportunidad) {
+            throw new Error(`El cliente con ID ${id} no existe.`);
+        }
      await prisma.oportunidades.update({
         where: { id },
         data: {
